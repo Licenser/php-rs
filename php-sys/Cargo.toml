@@ -1,9 +1,10 @@
 [package]
 name = "php-sys"
-version = "0.1.0"
-authors = ["Herman J. Radtke III <herman@hermanradtke.com>"]
+version = "7.2.12"
+authors = ["Herman J. Radtke III <herman@hermanradtke.com>", "Heinz Gies <heinz@licenser.net>"]
 links = "php7"
 build = "build.rs"
 
 [build-dependencies]
-bindgen = "0.29"
+bindgen = "0.43"
+cc = "1.0"
