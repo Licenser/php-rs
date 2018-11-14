@@ -60,11 +60,14 @@ impl<T> Runtime<T> {
 
     /// Executes php code, given a php file and a context. The context can be used
     /// to pass additional information to the callbacks.
-    pub fn execute(&mut self, handle_filename: &str, context: T) -> Result<&T, ()> {
+    pub fn execute(&mut self, handle_filename: &str, context: T) -> Result<&T, ()>
+    where
+        T: std::fmt::Debug,
+    {
         let mode = CString::new("rb").unwrap();
         unsafe {
             php_sys::ts_resource_ex(0, ptr::null_mut());
-
+            let handle_filename = CString::new(handle_filename).unwrap();
             let fp = php_sys::phprpm_fopen(handle_filename.as_ptr() as *const i8, mode.as_ptr());
             let mut handle = php_sys::_zend_file_handle__bindgen_ty_1::default();
             handle.fp = fp;
@@ -130,6 +133,7 @@ struct Callbacks<T> {
 /// A simple IOContext that handles reading from a buffer and writing to a buffer.
 ///
 /// This can be used as a demo or example of how to read / write to a context
+#[derive(Debug)]
 pub struct IOContext {
     /// Output buffer
     pub buffer: Vec<u8>,
@@ -306,4 +310,26 @@ unsafe extern "C" fn sapi_server_register_variables<T>(_track_vars_array: *mut p
 
 unsafe extern "C" fn sapi_server_log_message<T>(_ebmessage: *mut c_char, _syslog_type_int: c_int) {
     //TODO
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_execution() {
+        let mut runtime =
+            IOContext::add_to_builder(Runtime::new("php-test", "PHP Test Runtime", 1)).start();
+
+        let ctx = IOContext {
+            body: "hello".to_string().into_bytes().into_boxed_slice(),
+            buffer: Vec::with_capacity(1028),
+        };
+        let d = ::std::env::current_dir().unwrap();
+        let d = d.join("tests/test.php");
+        let ctx = runtime.execute(d.to_str().unwrap(), ctx).unwrap();
+        assert_eq!(
+            String::from_utf8(ctx.buffer.clone()).unwrap(),
+            "php got: hello".to_string()
+        );
+    }
 }
