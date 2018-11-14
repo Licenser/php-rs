@@ -1,8 +1,8 @@
 # libphp rust bindings 
 
-[![Build Status](https://travis-ci.org/hjr3/php-rpm.svg?branch=master)](https://travis-ci.org/hjr3/php-rpm)
+[![Build Status](https://travis-ci.org/Licenser/php-rs.svg?branch=master)](https://travis-ci.org/Licenser/php-rs)
 
-A binding to libphp from rust. It is pulling out the php-sys from [hjr3's project](https://travis-ci.org/hjr3/php-rpm), and adds some rusty wrapping around it to reduce the builerplate and need for unsafe.
+A binding to libphp from rust. It is pulling out the php-sys from [hjr3's project](https://travis-ci.org/hjr3/php-rpm), and adds some rusty wrapping around it to reduce the boilerplate and need for unsafe.
 
 ## Thanks
 

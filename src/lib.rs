@@ -1,17 +1,29 @@
+//! A rust wrapper around libphp
+
 extern crate php_sys;
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int, c_uchar, c_void};
 use std::ptr;
 use std::slice;
 
+/// PHP Runtime to execute code in.
 pub struct Runtime<T> {
     callbacks: Callbacks<T>,
 }
 
 impl<T> Runtime<T> {
-    pub fn new(name: &str, long_name: &str) -> RuntimeBuilder<T> {
+    /// Creates a php runtime, should ever only be a single run runtime as libphp
+    /// shares state.
+    ///
+    /// A builder is returned to set callbacks as needed.
+    ///
+    /// `name` - is the short name of the runtime
+    /// `long_name` - is the long/descriptive name of the runtime
+    /// `threads` - number of runtime threads
+    pub fn new(name: &str, long_name: &str, threads: usize) -> RuntimeBuilder<T> {
+        let threads = if threads > 0 { threads } else { 1 };
         unsafe {
-            php_sys::tsrm_startup(1, 1, 0, ptr::null_mut());
+            php_sys::tsrm_startup(threads as i32, 1, 0, ptr::null_mut());
             php_sys::ts_resource_ex(0, ptr::null_mut());
             php_sys::zend_tsrmls_cache_update();
 
@@ -46,6 +58,8 @@ impl<T> Runtime<T> {
         }
     }
 
+    /// Executes php code, given a php file and a context. The context can be used
+    /// to pass additional information to the callbacks.
     pub fn execute(&mut self, handle_filename: &str, context: T) -> Result<&T, ()> {
         let mode = CString::new("rb").unwrap();
         unsafe {
@@ -102,17 +116,10 @@ struct PHPContext<'ctx, T: 'ctx> {
     context: T,
 }
 
-pub type Module = php_sys::_sapi_module_struct;
-
-pub struct RuntimeBuilder<T> {
-    callbacks: Callbacks<T>,
-    module: Box<php_sys::_sapi_module_struct>,
-}
-
-type StartupCallback<T> = FnMut(&mut T) -> Result<(), ()>;
-type ShutdownCallback<T> = FnMut(&mut T) -> Result<(), ()>;
-type WriteCallback<T> = FnMut(&mut T, &[u8]) -> Result<usize, ()>;
-type ReadCallback<T> = FnMut(&mut T, *mut i8, usize) -> Result<usize, ()>;
+pub type StartupCallback<T> = FnMut(&mut T) -> Result<(), ()>;
+pub type ShutdownCallback<T> = FnMut(&mut T) -> Result<(), ()>;
+pub type WriteCallback<T> = FnMut(&mut T, &[u8]) -> Result<usize, ()>;
+pub type ReadCallback<T> = FnMut(&mut T, *mut i8, usize) -> Result<usize, ()>;
 struct Callbacks<T> {
     startup: Option<Box<StartupCallback<T>>>,
     shutdown: Option<Box<ShutdownCallback<T>>>,
@@ -120,23 +127,81 @@ struct Callbacks<T> {
     read: Option<Box<ReadCallback<T>>>,
 }
 
+/// A simple IOContext that handles reading from a buffer and writing to a buffer.
+///
+/// This can be used as a demo or example of how to read / write to a context
+pub struct IOContext {
+    /// Output buffer
+    pub buffer: Vec<u8>,
+    /// Input buffer / body
+    pub body: Box<[u8]>,
+}
+
+impl IOContext {
+    fn write(ctx: &mut IOContext, buf: &[u8]) -> Result<usize, ()> {
+        ctx.buffer.extend_from_slice(&buf);
+        Ok(buf.len())
+    }
+
+    fn read(ctx: &mut IOContext, buf: *mut i8, bytes: usize) -> Result<usize, ()> {
+        unsafe {
+            let ctx = ctx as *mut IOContext;
+            let body = &(*ctx).body;
+            let copied = ::std::cmp::min(bytes, body.len());
+            if copied > 0 {
+                let (to_send, to_retain) = body.split_at(copied);
+                let ptr = to_send.as_ptr() as *const i8;
+                ::std::ptr::copy(ptr, buf, copied);
+                (*ctx).body = to_retain.to_owned().into_boxed_slice();
+            }
+            Ok(copied)
+        }
+    }
+    /// Adds the IOContext to a builder, this will set all related functions.
+    pub fn add_to_builder(builder: RuntimeBuilder<IOContext>) -> RuntimeBuilder<IOContext> {
+        builder
+            .read(Box::new(IOContext::read))
+            .write(Box::new(IOContext::write))
+    }
+}
+
+/// Runtime builder to set callbacks as required.
+pub struct RuntimeBuilder<T> {
+    callbacks: Callbacks<T>,
+    module: Box<php_sys::_sapi_module_struct>,
+}
+
 impl<T> RuntimeBuilder<T> {
+    /// The startup callback is called when the php runtime is started. It
+    /// can be used to initiate an environment as needed.
     pub fn startup(mut self, callback: Box<StartupCallback<T>>) -> Self {
         self.callbacks.startup = Some(callback);
         self
     }
+
+    /// The shutdown callback is called when the php runtime is terminated. It
+    /// can be used to clean up an environment as needed.
     pub fn shutdown(mut self, callback: Box<ShutdownCallback<T>>) -> Self {
         self.callbacks.shutdown = Some(callback);
         self
     }
+
+    /// This is called when the PHP code wants to write data as a return.
+    /// The function might be called multiple times per execution!
     pub fn write(mut self, callback: Box<WriteCallback<T>>) -> Self {
         self.callbacks.write = Some(callback);
         self
     }
+
+    /// This is called when the PHP tries to to read the 'body'.
+    /// The function might be called multiple times per execution! and
+    /// should progressively consume the boy.
     pub fn read(mut self, callback: Box<ReadCallback<T>>) -> Self {
         self.callbacks.read = Some(callback);
         self
     }
+
+    /// Finalizes the builder, creates and starts the runtime.
     pub fn start(self) -> Runtime<T> {
         unsafe {
             let module_ptr = Box::into_raw(self.module);
