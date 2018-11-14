@@ -6,7 +6,7 @@ A binding to libphp from rust. It is pulling out the php-sys from [hjr3's projec
 
 ## Thanks
 
-A big thanks to Sara Goleman and her book _Extending and Embedding PHP_. Also thanks to the people that created bindgen.
+A big thanks to Sara Goleman and her book _Extending and Embedding PHP_. Also thanks to the people that created bindgen. And most of all to @hjr3 for publishing php-rpm which a lot of the code came form.
 
 ## License
 
