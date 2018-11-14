@@ -68,6 +68,17 @@ fn main() {
                 format!("--branch={}", php_version).as_str(),
             ],
         );
+        run_command_or_fail(
+            target("php-src"),
+            "sed",
+            &[
+                "-e",
+                "s/void zend_signal_startup/ZEND_API void zend_signal_startup/g",
+                "-ibk",
+                "Zend/zend_signal.c",
+                "Zend/zend_signal.h",
+            ],
+        );
         run_command_or_fail(target("php-src"), "./genfiles", &[]);
         run_command_or_fail(target("php-src"), "./buildconf", &["--force"]);
         run_command_or_fail(
