@@ -123,7 +123,7 @@ fn main() {
                 "--disable-xmlreader",
                 "--without-pear",
                 "--with-libdir=lib64",
-                "--with-pic"
+                "--with-pic",
                 "CFLAGS=\"-m64\"",
             ],
         );
