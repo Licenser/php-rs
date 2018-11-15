@@ -115,5 +115,6 @@ fn main() {
         .include(&format!("{}/TSRM", include_dir))
         .include(&format!("{}/Zend", include_dir))
         .include(&format!("{}/main", include_dir))
+        .flag("-fPIC")
         .compile("foo");
 }
