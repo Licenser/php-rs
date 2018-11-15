@@ -1,4 +1,5 @@
 extern crate cc;
+extern crate num_cpus;
 
 use std::env;
 use std::io::Write;
@@ -46,6 +47,7 @@ fn exists(path: &str) -> bool {
 }
 
 fn main() {
+    let cpus = format!("{}", num_cpus::get());
     let default_link_static = true;
     let php_version = option_env!("PHP_VERSION").unwrap_or(PHP_VERSION);
 
@@ -96,7 +98,7 @@ fn main() {
                 "--without-pear",
             ],
         );
-        run_command_or_fail(target("php-src"), "make", &[]);
+        run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
     }
 
     let include_dir = target("php-src");
