@@ -72,7 +72,7 @@ fn main() {
         );
         run_command_or_fail(
             target("php-src"),
-            "sed",
+            "echo",
             &[
                 "-e",
                 "s/void zend_signal_startup/ZEND_API void zend_signal_startup/g",
