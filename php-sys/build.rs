@@ -184,6 +184,7 @@ fn main() {
     cc::Build::new()
         .file("src/shim.c")
         .include(&include_dir)
+        .flag("-fPIC")
         .include(&format!("{}/TSRM", include_dir))
         .include(&format!("{}/Zend", include_dir))
         .include(&format!("{}/main", include_dir))
