@@ -122,6 +122,7 @@ fn main() {
                 "--disable-xmlwriter",
                 "--disable-xmlreader",
                 "--without-pear",
+                "CCFLAGS='-fPIC'",
             ],
         );
         run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
@@ -141,21 +142,38 @@ fn main() {
         .collect::<Vec<String>>();
 
     let bindings = Builder::default()
-        .enable_cxx_namespaces()
-        .rustified_enum(".*")
         .rustfmt_bindings(true)
-        .header("wrapper.h")
         .clang_args(includes)
-        .blacklist_type("FP_NAN")
-        .blacklist_type("FP_INFINITE")
-        .blacklist_type("FP_ZERO")
-        .blacklist_type("FP_SUBNORMAL")
-        .blacklist_type("FP_NORMAL")
-        .blacklist_type("max_align_t")
-        .blacklist_item("IncompleteArrayField")
+        .whitelist_function("_zend_file_handle__bindgen_ty_1")
+        .whitelist_function("php_execute_script")
+        .whitelist_function("php_module_startup")
+        .whitelist_function("php_request_shutdown")
+        .whitelist_function("php_request_startup")
+        .whitelist_function("phprpm_fopen")
+        .whitelist_function("sapi_send_headers")
+        .whitelist_function("sapi_startup")
+        .whitelist_function("sg_request_info")
+        .whitelist_function("sg_sapi_headers")
+        .whitelist_function("sg_server_context")
+        .whitelist_function("sg_server_context")
+        .whitelist_function("sg_set_server_context")
+        .whitelist_function("sg_set_server_context")
+        .whitelist_function("ts_resource_ex")
+        .whitelist_function("tsrm_startup")
+        .whitelist_function("zend_error")
+        .whitelist_function("zend_signal_startup")
+        .whitelist_function("zend_tsrmls_cache_update")
+        .whitelist_var("SAPI_HEADER_SENT_SUCCESSFULLY")
+        .whitelist_type("sapi_headers_struc")
+        .whitelist_type("sapi_module_struc")
+        .whitelist_type("sapi_request_info")
+        .whitelist_type("ZEND_RESULT_CODE")
+        .whitelist_type("zval")
+        .whitelist_var("zend_stream_type_ZEND_HANDLE_FP")
         .parse_callbacks(Box::new(MacroCallback {
             macros: macros.clone(),
         })).derive_default(true)
+        .header("wrapper.h")
         .generate()
         .expect("Unable to generate bindings");
 
