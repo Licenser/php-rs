@@ -2,11 +2,14 @@ extern crate bindgen;
 extern crate cc;
 extern crate num_cpus;
 
+use bindgen::callbacks::{MacroParsingBehavior, ParseCallbacks};
+use std::collections::HashSet;
 use std::env;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::{Arc, RwLock};
 
 const PHP_VERSION: &'static str = concat!("php-", env!("CARGO_PKG_VERSION"));
 
@@ -48,10 +51,28 @@ fn exists(path: &str) -> bool {
     Path::new(target(path).as_str()).exists()
 }
 
+#[derive(Debug)]
+struct MacroCallback {
+    macros: Arc<RwLock<HashSet<String>>>,
+}
+
+impl ParseCallbacks for MacroCallback {
+    fn will_parse_macro(&self, name: &str) -> MacroParsingBehavior {
+        self.macros.write().unwrap().insert(name.into());
+
+        if name == "FP_NAN" {
+            return MacroParsingBehavior::Ignore;
+        }
+
+        MacroParsingBehavior::Default
+    }
+}
+
 fn main() {
     let cpus = format!("{}", num_cpus::get());
     let default_link_static = true;
     let php_version = option_env!("PHP_VERSION").unwrap_or(PHP_VERSION);
+    let macros = Arc::new(RwLock::new(HashSet::new()));
 
     println!("cargo:rerun-if-env-changed=PHP_VERSION");
 
@@ -125,7 +146,9 @@ fn main() {
         .blacklist_type("FP_SUBNORMAL")
         .blacklist_type("FP_NORMAL")
         .blacklist_type("max_align_t")
-        .derive_default(true)
+        .parse_callbacks(Box::new(MacroCallback {
+            macros: macros.clone(),
+        })).derive_default(true)
         .generate()
         .expect("Unable to generate bindings");
 
