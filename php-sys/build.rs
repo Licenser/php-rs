@@ -107,23 +107,26 @@ fn main() {
         );
         run_command_or_fail(target("php-src"), "./genfiles", &[]);
         run_command_or_fail(target("php-src"), "./buildconf", &["--force"]);
+
         run_command_or_fail(
             target("php-src"),
             "./configure",
             &[
                 "--enable-debug",
-                "--enable-embed=static",
-                "--without-iconv",
-                "--disable-libxml",
-                "--disable-dom",
-                "--disable-xml",
+                "--enable-embed=shared",
+                "--disable-cli",
+                "--disable-cgi",
                 "--enable-maintainer-zts",
-                "--disable-simplexml",
-                "--disable-xmlwriter",
-                "--disable-xmlreader",
-                "--without-pear",
-                "--with-libdir=lib64",
-                "--with-pic",
+                // "--without-iconv",
+                // "--disable-libxml",
+                // "--disable-dom",
+                // "--disable-xml",
+                // "--disable-simplexml",
+                // "--disable-xmlwriter",
+                // "--disable-xmlreader",
+                // "--without-pear",
+                // "--with-libdir=lib64",
+                // "--with-pic",
             ],
         );
         run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
