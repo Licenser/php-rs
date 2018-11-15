@@ -152,7 +152,7 @@ fn main() {
         .blacklist_type("FP_SUBNORMAL")
         .blacklist_type("FP_NORMAL")
         .blacklist_type("max_align_t")
-        .blacklist_item("__IncompleteArrayField")
+        .blacklist_item("IncompleteArrayField")
         .parse_callbacks(Box::new(MacroCallback {
             macros: macros.clone(),
         })).derive_default(true)
