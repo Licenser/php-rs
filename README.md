@@ -4,6 +4,11 @@
 
 A binding to libphp from rust. It is pulling out the php-sys from [hjr3's project](https://travis-ci.org/hjr3/php-rpm), and adds some rusty wrapping around it to reduce the boilerplate and need for unsafe.
 
+
+## OS X
+
+This requires a recent bison being in your path, homebrew lets you get one.
+
 ## Thanks
 
 A big thanks to Sara Goleman and her book _Extending and Embedding PHP_. Also thanks to the people that created bindgen. And most of all to @hjr3 for publishing php-rpm which a lot of the code came form.

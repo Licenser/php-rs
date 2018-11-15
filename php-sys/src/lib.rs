@@ -14,4 +14,4 @@ extern "C" {
     pub fn phprpm_fopen(filename: *const c_char, mode: *const c_char) -> *mut FILE;
 }
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+include!("bindings.rs");

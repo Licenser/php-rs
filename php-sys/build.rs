@@ -1,10 +1,8 @@
-extern crate bindgen;
 extern crate cc;
 
 use std::env;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
 use std::process::Command;
 
 const PHP_VERSION: &'static str = concat!("php-", env!("CARGO_PKG_VERSION"));
@@ -109,28 +107,6 @@ fn main() {
     println!("cargo:rustc-link-lib{}=php7", link_type);
     println!("cargo:rustc-link-search=native={}", lib_dir);
 
-    let includes = ["/", "/TSRM", "/Zend", "/main"]
-        .iter()
-        .map(|d| format!("-I{}{}", include_dir, d))
-        .collect::<Vec<String>>();
-
-    let bindings = bindgen::Builder::default()
-        .header("wrapper.h")
-        .clang_args(includes)
-        .blacklist_type("FP_NAN")
-        .blacklist_type("FP_INFINITE")
-        .blacklist_type("FP_ZERO")
-        .blacklist_type("FP_SUBNORMAL")
-        .blacklist_type("FP_NORMAL")
-        .blacklist_type("max_align_t")
-        .derive_default(true)
-        .generate()
-        .expect("Unable to generate bindings");
-
-    let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
     cc::Build::new()
         .file("src/shim.c")
         .include(&include_dir)
