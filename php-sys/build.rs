@@ -73,16 +73,22 @@ impl ParseCallbacks for MacroCallback {
 
 fn main() {
     let cpus = format!("{}", num_cpus::get());
+    #[cfg(all(target_os = "linux"))]
     let default_link_static = false;
+    #[cfg(all(target_os = "macos"))]
+    let default_link_static = true;
     let php_version = option_env!("PHP_VERSION").unwrap_or(PHP_VERSION);
     let macros = Arc::new(RwLock::new(HashSet::new()));
 
     println!("cargo:rerun-if-env-changed=PHP_VERSION");
     println!("cargo:rerun-if-env-changed=PHP_LINK_STATIC");
 
+    let link_dynamic = env::var_os("PHP_LINK_DYNAMIC")
+        .map(|_| true)
+        .unwrap_or(false);
     let link_static = env::var_os("PHP_LINK_STATIC")
         .map(|_| true)
-        .unwrap_or(default_link_static);
+        .unwrap_or(default_link_static && !link_dynamic);
 
     if !exists("php-src/LICENSE") {
         println_stderr!("Setting up PHP {}", php_version);
@@ -111,27 +117,43 @@ fn main() {
 
         let embed_type = if link_static { "static" } else { "shared" };
 
-        run_command_or_fail(
-            target("php-src"),
-            "./configure",
-            &[
-                "--enable-debug",
-                &format!("--enable-embed={}", embed_type),
-                "--disable-cli",
-                "--disable-cgi",
-                "--enable-maintainer-zts",
-                // "--without-iconv",
-                "--disable-libxml",
-                "--disable-dom",
-                "--disable-xml",
-                "--disable-simplexml",
-                "--disable-xmlwriter",
-                "--disable-xmlreader",
-                // "--without-pear",
-                // "--with-libdir=lib64",
-                // "--with-pic",
-            ],
-        );
+        #[cfg(all(target_os = "linux"))]
+        let config = &[
+            "--enable-debug",
+            &format!("--enable-embed={}", embed_type),
+            "--disable-cli",
+            "--disable-cgi",
+            "--enable-maintainer-zts",
+            // "--without-iconv",
+            "--disable-libxml",
+            "--disable-dom",
+            "--disable-xml",
+            "--disable-simplexml",
+            "--disable-xmlwriter",
+            "--disable-xmlreader",
+            // "--without-pear",
+            // "--with-libdir=lib64",
+            // "--with-pic",
+        ];
+        #[cfg(all(target_os = "macos"))]
+        let config = &[
+            "--enable-debug",
+            &format!("--enable-embed={}", embed_type),
+            "--disable-cli",
+            "--disable-cgi",
+            "--enable-maintainer-zts",
+            "--without-iconv",
+            "--disable-libxml",
+            "--disable-dom",
+            "--disable-xml",
+            "--disable-simplexml",
+            "--disable-xmlwriter",
+            "--disable-xmlreader",
+            // "--without-pear",
+            // "--with-libdir=lib64",
+            // "--with-pic",
+        ];
+        run_command_or_fail(target("php-src"), "./configure", config);
         run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
     }
 
