@@ -3,6 +3,7 @@ extern crate cc;
 extern crate num_cpus;
 
 use bindgen::callbacks::{MacroParsingBehavior, ParseCallbacks};
+use bindgen::Builder;
 use std::collections::HashSet;
 use std::env;
 use std::io::Write;
@@ -51,6 +52,7 @@ fn exists(path: &str) -> bool {
     Path::new(target(path).as_str()).exists()
 }
 
+/// This is needed to prevent bindgen to create multiple definitions of the same macro and fail
 #[derive(Debug)]
 struct MacroCallback {
     macros: Arc<RwLock<HashSet<String>>>,
@@ -138,7 +140,10 @@ fn main() {
         .map(|d| format!("-I{}{}", include_dir, d))
         .collect::<Vec<String>>();
 
-    let bindings = bindgen::Builder::default()
+    let bindings = Builder::default()
+        .enable_cxx_namespaces()
+        .rustified_enum(".*")
+        .rustfmt_bindings(true)
         .header("wrapper.h")
         .clang_args(includes)
         .blacklist_type("FP_NAN")
