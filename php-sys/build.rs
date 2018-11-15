@@ -95,7 +95,6 @@ fn main() {
                     "--disable-xmlreader",
                     "--without-pear",
                     "--prefix=/usr/local/musl",
-                    "--static",
                     "CC=musl-gcc",
                 ],
             );
