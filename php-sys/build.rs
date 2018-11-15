@@ -73,11 +73,12 @@ impl ParseCallbacks for MacroCallback {
 
 fn main() {
     let cpus = format!("{}", num_cpus::get());
-    let default_link_static = true;
+    let default_link_static = false;
     let php_version = option_env!("PHP_VERSION").unwrap_or(PHP_VERSION);
     let macros = Arc::new(RwLock::new(HashSet::new()));
 
     println!("cargo:rerun-if-env-changed=PHP_VERSION");
+    println!("cargo:rerun-if-env-changed=PHP_LINK_STATIC");
 
     let link_static = env::var_os("PHP_LINK_STATIC")
         .map(|_| true)
@@ -108,22 +109,24 @@ fn main() {
         run_command_or_fail(target("php-src"), "./genfiles", &[]);
         run_command_or_fail(target("php-src"), "./buildconf", &["--force"]);
 
+        let embed_type = if link_static { "static" } else { "shared" };
+
         run_command_or_fail(
             target("php-src"),
             "./configure",
             &[
                 "--enable-debug",
-                "--enable-embed=shared",
+                &format!("--enable-embed={}", embed_type),
                 "--disable-cli",
                 "--disable-cgi",
                 "--enable-maintainer-zts",
                 // "--without-iconv",
-                // "--disable-libxml",
-                // "--disable-dom",
-                // "--disable-xml",
-                // "--disable-simplexml",
-                // "--disable-xmlwriter",
-                // "--disable-xmlreader",
+                "--disable-libxml",
+                "--disable-dom",
+                "--disable-xml",
+                "--disable-simplexml",
+                "--disable-xmlwriter",
+                "--disable-xmlreader",
                 // "--without-pear",
                 // "--with-libdir=lib64",
                 // "--with-pic",
