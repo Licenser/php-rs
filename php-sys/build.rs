@@ -124,7 +124,6 @@ fn main() {
                 "--without-pear",
                 "--with-libdir=lib64",
                 "--with-pic",
-                "CFLAGS=\"-m64\"",
             ],
         );
         run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
