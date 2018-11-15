@@ -63,9 +63,9 @@ impl ParseCallbacks for MacroCallback {
         self.macros.write().unwrap().insert(name.into());
 
         match name {
-            //            "FP_NAN" | "FP_INFINITE" | "FP_ZERO" | "FP_SUBNORMAL" | "FP_NORMAL" => {
-            //                MacroParsingBehavior::Ignore
-            //            }
+            "FP_NAN" | "FP_INFINITE" | "FP_ZERO" | "FP_SUBNORMAL" | "FP_NORMAL" => {
+                MacroParsingBehavior::Ignore
+            }
             _ => MacroParsingBehavior::Default,
         }
     }
@@ -152,7 +152,7 @@ fn main() {
         .blacklist_type("FP_SUBNORMAL")
         .blacklist_type("FP_NORMAL")
         .blacklist_type("max_align_t")
-        .blacklist_type("__IncompleteArrayField")
+        .blacklist_item("__IncompleteArrayField")
         .parse_callbacks(Box::new(MacroCallback {
             macros: macros.clone(),
         })).derive_default(true)
