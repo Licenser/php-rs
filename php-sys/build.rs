@@ -122,7 +122,7 @@ fn main() {
                 "--disable-xmlwriter",
                 "--disable-xmlreader",
                 "--without-pear",
-                "CCFLAGS='-fPIC'",
+                "CCFLAGS='-fPIC -m64'",
             ],
         );
         run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
@@ -185,6 +185,7 @@ fn main() {
         .file("src/shim.c")
         .include(&include_dir)
         .flag("-fPIC")
+        .flag("-m64")
         .include(&format!("{}/TSRM", include_dir))
         .include(&format!("{}/Zend", include_dir))
         .include(&format!("{}/main", include_dir))
