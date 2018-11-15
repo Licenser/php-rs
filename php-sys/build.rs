@@ -1,10 +1,11 @@
-extern crate bindgen;
+//extern crate bindgen;
 extern crate cc;
+extern crate num_cpus;
 
 use std::env;
 use std::io::Write;
 use std::path::Path;
-use std::path::PathBuf;
+//use std::path::PathBuf;
 use std::process::Command;
 
 const PHP_VERSION: &'static str = concat!("php-", env!("CARGO_PKG_VERSION"));
@@ -48,16 +49,12 @@ fn exists(path: &str) -> bool {
 }
 
 fn main() {
-    let default_link_static = true;
+    let cpus = format!("{}", num_cpus::get());
     let php_version = option_env!("PHP_VERSION").unwrap_or(PHP_VERSION);
 
     println!("cargo:rerun-if-env-changed=PHP_VERSION");
 
-    let link_static = env::var_os("PHP_LINK_STATIC")
-        .map(|_| true)
-        .unwrap_or(default_link_static);
-
-    if !exists("php-src/LICENSE") {
+    if !exists("php-src") {
         println_stderr!("Setting up PHP {}", php_version);
         run_command_or_fail(
             target(""),
@@ -68,47 +65,51 @@ fn main() {
                 format!("--branch={}", php_version).as_str(),
             ],
         );
-        run_command_or_fail(
-            target("php-src"),
-            "sed",
-            &[
-                "-e",
-                "s/void zend_signal_startup/ZEND_API void zend_signal_startup/g",
-                "-ibk",
-                "Zend/zend_signal.c",
-                "Zend/zend_signal.h",
-            ],
-        );
-        run_command_or_fail(target("php-src"), "./genfiles", &[]);
-        run_command_or_fail(target("php-src"), "./buildconf", &["--force"]);
-        run_command_or_fail(
-            target("php-src"),
-            "./configure",
-            &[
-                "--enable-debug",
-                "--enable-embed=static",
-                "--without-iconv",
-                "--disable-libxml",
-                "--disable-dom",
-                "--disable-xml",
-                "--enable-maintainer-zts",
-                "--disable-simplexml",
-                "--disable-xmlwriter",
-                "--disable-xmlreader",
-                "--without-pear",
-            ],
-        );
-        run_command_or_fail(target("php-src"), "make", &[]);
+        if !exists("php-src/libs/libphp7.a") {
+            run_command_or_fail(
+                target("php-src"),
+                "sed",
+                &[
+                    "-e",
+                    "s/void zend_signal_startup/ZEND_API void zend_signal_startup/g",
+                    "-ibk",
+                    "Zend/zend_signal.c",
+                    "Zend/zend_signal.h",
+                ],
+            );
+            run_command_or_fail(target("php-src"), "./genfiles", &[]);
+            run_command_or_fail(target("php-src"), "./buildconf", &["--force"]);
+            run_command_or_fail(
+                target("php-src"),
+                "./configure",
+                &[
+                    "--enable-debug",
+                    "--enable-embed=static",
+                    "--without-iconv",
+                    "--disable-libxml",
+                    "--disable-dom",
+                    "--disable-xml",
+                    "--enable-maintainer-zts",
+                    "--disable-simplexml",
+                    "--disable-xmlwriter",
+                    "--disable-xmlreader",
+                    "--without-pear",
+                    "--prefix=/usr/local/musl",
+                    "--static",
+                    "CC=musl-gcc",
+                ],
+            );
+            run_command_or_fail(target("php-src"), "make", &["-j", cpus.as_str()]);
+        }
     }
 
     let include_dir = target("php-src");
     let lib_dir = target("php-src/libs");
 
-    let link_type = if link_static { "=static" } else { "" };
-
-    println!("cargo:rustc-link-lib{}=php7", link_type);
+    println!("cargo:rustc-link-lib=static=php7");
     println!("cargo:rustc-link-search=native={}", lib_dir);
 
+    /*
     let includes = ["/", "/TSRM", "/Zend", "/main"]
         .iter()
         .map(|d| format!("-I{}{}", include_dir, d))
@@ -126,16 +127,16 @@ fn main() {
         .derive_default(true)
         .generate()
         .expect("Unable to generate bindings");
-
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+     */
     cc::Build::new()
         .file("src/shim.c")
         .include(&include_dir)
         .include(&format!("{}/TSRM", include_dir))
         .include(&format!("{}/Zend", include_dir))
         .include(&format!("{}/main", include_dir))
-        .compile("foo");
+        .compile("phpshim");
 }
