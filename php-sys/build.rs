@@ -60,11 +60,12 @@ impl ParseCallbacks for MacroCallback {
     fn will_parse_macro(&self, name: &str) -> MacroParsingBehavior {
         self.macros.write().unwrap().insert(name.into());
 
-        if name == "FP_NAN" {
-            return MacroParsingBehavior::Ignore;
+        match name {
+            "FP_NAN" | "FP_INFINITE" | "FP_ZERO" | "FP_SUBNORMAL" | "FP_NORMAL" => {
+                MacroParsingBehavior::Ignore
+            }
+            _ => MacroParsingBehavior::Default,
         }
-
-        MacroParsingBehavior::Default
     }
 }
 
@@ -93,7 +94,7 @@ fn main() {
         );
         run_command_or_fail(
             target("php-src"),
-            "echo",
+            "sed",
             &[
                 "-e",
                 "s/void zend_signal_startup/ZEND_API void zend_signal_startup/g",
