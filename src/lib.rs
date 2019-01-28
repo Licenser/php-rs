@@ -60,7 +60,7 @@ impl<T> Runtime<T> {
 
     /// Executes php code, given a php file and a context. The context can be used
     /// to pass additional information to the callbacks.
-    pub fn execute(&mut self, handle_filename: &str, context: T) -> Result<&T, ()>
+    pub fn execute(&mut self, handle_filename: &str, context: &mut T) -> Result<(), ()>
     where
         T: std::fmt::Debug,
     {
@@ -81,11 +81,11 @@ impl<T> Runtime<T> {
             let script_ptr = Box::into_raw(script);
 
             (*php_sys::sg_sapi_headers()).http_response_code = 200;
-            let context = Box::new(PHPContext {
+            let ctx = Box::new(PHPContext {
                 callbacks: &mut self.callbacks,
-                context,
+                context: context,
             });
-            let context_ptr = Box::into_raw(context);
+            let context_ptr = Box::into_raw(ctx);
             php_sys::sg_set_server_context(context_ptr as *mut c_void);
             php_sys::php_request_startup();
 
@@ -93,8 +93,10 @@ impl<T> Runtime<T> {
 
             drop(Box::from_raw(script_ptr));
 
-            let context = php_sys::sg_server_context() as *mut PHPContext<T>;
-            let result = &(*context).context;
+            // Since we pass in the context as a mutable ref we don't need this any more
+            //let context = php_sys::sg_server_context() as *mut PHPContext<T>;
+
+            //let result = (*context).context;
 
             // TODO move this into the request shutdown block
             // note: strangely enough, php_request_shutdown will not call our request shutdown callback
@@ -109,14 +111,14 @@ impl<T> Runtime<T> {
 
             php_sys::php_request_shutdown(ptr::null_mut());
 
-            Ok(result)
+            Ok(())
         }
     }
 }
 
 struct PHPContext<'ctx, T: 'ctx> {
     callbacks: &'ctx mut Callbacks<T>,
-    context: T,
+    context: &'ctx mut T,
 }
 
 pub type StartupCallback<T> = FnMut(&mut T) -> Result<(), ()>;
@@ -315,21 +317,30 @@ unsafe extern "C" fn sapi_server_log_message<T>(_ebmessage: *mut c_char, _syslog
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test]
-    fn test_execution() {
-        let mut runtime =
-            IOContext::add_to_builder(Runtime::new("php-test", "PHP Test Runtime", 1)).start();
-
-        let ctx = IOContext {
-            body: "hello".to_string().into_bytes().into_boxed_slice(),
+    fn run(runtime: &mut Runtime<IOContext>, s: String) -> String {
+        let mut ctx = IOContext {
+            body: s.into_bytes().into_boxed_slice(),
             buffer: Vec::with_capacity(1028),
         };
         let d = ::std::env::current_dir().unwrap();
         let d = d.join("tests/test.php");
-        let ctx = runtime.execute(d.to_str().unwrap(), ctx).unwrap();
+        if let Ok(result) = runtime.execute(d.to_str().unwrap(), &mut ctx) {
+            String::from_utf8(ctx.buffer.clone()).unwrap()
+        } else {
+            "error".into()
+        }
+    }
+    #[test]
+    fn test_execution() {
+        let mut runtime =
+            IOContext::add_to_builder(Runtime::new("php-test", "PHP Test Runtime", 1)).start();
         assert_eq!(
-            String::from_utf8(ctx.buffer.clone()).unwrap(),
+            run(&mut runtime, "hello".into()),
             "php got: hello".to_string()
+        );
+        assert_eq!(
+            run(&mut runtime, "world".into()),
+            "php got: world".to_string()
         );
     }
 }

@@ -2,6 +2,7 @@
 name = "php"
 version = "0.1.0"
 authors = ["Herman J. Radtke III <herman@hermanradtke.com>", "Heinz Gies <heinz@licenser.net>"]
+edition = "2018"
 
 [dependencies]
 php-sys = { version = "7.2.12", path = "php-sys" }
